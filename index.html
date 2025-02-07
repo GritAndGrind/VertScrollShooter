@@ -248,10 +248,10 @@
                 this.y = y;
                 this.radius = size;
                 this.speedX = (Math.random() - 0.5) * 4;
-                this.speedY = (Math.random() - 0.5) * 4;
+                this.speedY = (Math.random() - 0.5)
+				                this.speedY = (Math.random() - 0.5) * 4;
                 this.life = 30;
-                this.color
-				                this.color = color;
+                this.color = color;
             }
 
             draw() {
@@ -416,7 +416,7 @@
         }
 
         function showPowerUpParticles(x, y) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 10; i++) {
                 particles.push(new Particle(x, y, 5, 'white')); // White particles for power-up collection
             }
         }
@@ -488,6 +488,11 @@
 
         canvas.addEventListener('mousemove', (e) => {
             player.setPosition(e.clientX);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            player.setPosition(touch.clientX);
         });
 
         setInterval(() => {
