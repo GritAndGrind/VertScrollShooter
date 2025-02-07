@@ -156,7 +156,6 @@
                 this.draw();
             }
         }
-
         class LaserBeam {
             constructor(x, y) {
                 this.x = x;
@@ -250,8 +249,7 @@
                 this.x = x;
                 this.y = y;
                 this.radius = size;
-                this.speedX = (Math.random() - 1);
-				speedX = (Math.random() - 0.5) * 4;
+                this.speedX = (Math.random() - 0.5) * 4;
                 this.speedY = (Math.random() - 0.5) * 4;
                 this.life = 30;
                 this.color = color;
@@ -293,7 +291,6 @@
                 this.draw();
             }
         }
-
         const player = new Player();
         const enemies = [];
         const powerUps = [];
@@ -423,7 +420,6 @@
                 particles.push(new Particle(x, y, 5, 'white')); // White particles for power-up collection
             }
         }
-
         function activateDoubleShoot() {
             doubleShoot = true;
             doubleShootCount++;
