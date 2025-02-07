@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertically Scrolling Shoot 'Em Up Game</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; background: #000; }
+        #legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+        }
+        #popup, #endgame {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="legend">
+        <p>Lives: <span id="lives">5</span></p>
+        <p>Hits: <span id="hits">0</span></p>
+        <p>Misses: <span id="misses">0</span></p>
+        <p>Accuracy: <span id="accuracy">0%</span></p>
+        <p>Enemies Got Away: <span id="escaped">0</span></p>
+        <p>Level: <span id="level">1</span></p>
+        <p>Power-Ups: Double Shoot - <span id="doubleShootCount">0</span>, Laser Beam - <span id="laserBeamCount">0</span>, Extra Life - <span id="extraLifeCount">0</span></p>
+    </div>
+    <div id="popup">Moving to next level in <span id="countdown">3</span> seconds...</div>
+    <div id="endgame">
+        <p>Good Game!</p>
+        <p>Final Stats:</p>
+        <p>Hits: <span id="finalHits">0</span></p>
+        <p>Misses: <span id="finalMisses">0</span></p>
+        <p>Accuracy: <span id="finalAccuracy">0%</span></p>
+        <p>Enemies Got Away: <span id="finalEscaped">0</span></p>
+        <p>Level Reached: <span id="finalLevel">1</span></p>
+        <p>Total Power-Ups Collected: <span id="finalPowerUps">0</span></p>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const livesElement = document.getElementById('lives');
+        const hitsElement = document.getElementById('hits');
+        const missesElement = document.getElementById('misses');
+        const accuracyElement = document.getElementById('accuracy');
+        const escapedElement = document.getElementById('escaped');
+        const levelElement = document.getElementById('level');
+        const doubleShootCountElement = document.getElementById('doubleShootCount');
+        const laserBeamCountElement = document.getElementById('laserBeamCount');
+        const extraLifeCountElement = document.getElementById('extraLifeCount');
+        const popup = document.getElementById('popup');
+        const endgame = document.getElementById('endgame');
+        const finalHits = document.getElementById('finalHits');
+        const finalMisses = document.getElementById('finalMisses');
+        const finalAccuracy = document.getElementById('finalAccuracy');
+        const finalEscaped = document.getElementById('finalEscaped');
+        const finalLevel = document.getElementById('finalLevel');
+        const finalPowerUps = document.getElementById('finalPowerUps');
+        const countdownElement = document.getElementById('countdown');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let lives = 5;
+        let hits = 0;
+        let misses = 0;
+        let escaped = 0;
+        let level = 1;
+        let rapidFire = true;
+        let doubleShoot = false;
+        let laserBeam = false;
+        let doubleShootCount = 0;
+        let laserBeamCount = 0;
+        let extraLifeCount = 0;
+        let powerUpTimeout;
+        let enemySpeed = 3;
+        let enemiesDefeated = 0;
+        let gamePaused = false;
+
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 40;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - this.height - 20;
+                this.projectiles = [];
+            }
+
+            draw() {
+                ctx.fillStyle = 'cyan';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            update() {
+                for (let projectile of this.projectiles) {
+                    projectile.update();
+                }
+            }
+
+            shoot() {
+                if (laserBeam) {
+                    this.projectiles.push(new LaserBeam(this.x + this.width / 2, this.y));
+                } else if (doubleShoot) {
+                    this.projectiles.push(new Projectile(this.x, this.y));
+                    this.projectiles.push(new Projectile(this.x + this.width, this.y));
+                } else {
+                    this.projectiles.push(new Projectile(this.x + this.width / 2, this.y));
+                }
+            }
+
+            setPosition(x) {
+                this.x = x - this.width / 2;
+                if (this.x < 0) this.x = 0;
+                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+            }
+        }
+
+        class Projectile {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.speed = 7;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                ctx.fillStyle = 'yellow';
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            update() {
+                this.y -= this.speed;
+                this.draw();
+            }
+        }
+
+        class LaserBeam {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 5;
+                this.height = canvas.height;
+            }
+
+            draw() {
+                ctx.fillStyle = 'green';
+                ctx.fillRect(this.x - this.width / 2, 0, this.width, canvas.height);
+            }
+
+            update() {
+                this.draw();
+                this.checkCollision();
+            }
+
+            checkCollision() {
+                for (let i = 0; i < enemies.length; i++) {
+                    let enemy = enemies[i];
+                    if (this.x > enemy.x && this.x < enemy.x + enemy.width) {
+                        enemy.explode();
+                        enemies.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                for (let j = 0; j < powerUps.length; j++) {
+                    let powerUp = powerUps[j];
+                    if (this.x > powerUp.x && this.x < powerUp.x + powerUp.width) {
+                        powerUps.splice(j, 1);
+                        j--;
+                        showPowerUpParticles(powerUp.x, powerUp.y);
+                        if (powerUp.type === 'doubleShoot') {
+                            activateDoubleShoot();
+                        } else if (powerUp.type === 'laserBeam') {
+                            activateLaserBeam();
+                        } else {
+                            addExtraLife();
+                        }
+                    }
+                }
+            }
+        }
+
+        class Enemy {
+            constructor(x, y) {
+                this.width = 40;
+                this.height = 40;
+                this.x = x;
+                this.y = y;
+                this.speed = enemySpeed;
+                this.particles = [];
+                this.exploded = false;
+            }
+
+            draw() {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.y += this.speed;
+                    this.draw();
+                } else {
+                    for (let particle of this.particles) {
+                        particle.update();
+                    }
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2));
+                }
+                hits++;
+                hitsElement.textContent = hits;
+                updateAccuracy();
+                enemiesDefeated++;
+                if (enemiesDefeated % 50 === 0) {
+                    nextLevel();
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, size = 2, color = 'orange') {
+                this.x = x;
+                this.y = y;
+                this.radius = size;
+                this.speedX = (Math.random() - 0.5) * 4;
+                this.speedY = (Math.random() - 0.5) * 4;
+                this.life = 30;
+                this.color
+				                this.color = color;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life--;
+                this.draw();
+            }
+        }
+
+        class PowerUp {
+            constructor(x, y, type) {
+                this.width = 20;
+                this.height = 20;
+                this.x = x;
+                this.y = y;
+                this.speed = 3;
+                this.type = type;
+            }
+
+            draw() {
+                ctx.fillStyle = this.type === 'doubleShoot' ? 'blue' : this.type === 'laserBeam' ? 'green' : 'magenta';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            update() {
+                this.y += this.speed;
+                this.draw();
+            }
+        }
+
+        const player = new Player();
+        const enemies = [];
+        const powerUps = [];
+        const particles = [];
+
+        function spawnEnemies() {
+            setInterval(() => {
+                if (!gamePaused) {
+                    const x = Math.random() * (canvas.width - 40);
+                    const y = -40;
+                    enemies.push(new Enemy(x, y));
+                }
+            }, 1000);
+        }
+
+        function spawnPowerUp() {
+            const x = Math.random() * (canvas.width - 20);
+            const y = -20;
+            const type = Math.random() < 0.33 ? 'extraLife' : (level >= 5 && Math.random() < 0.5 ? 'laserBeam' : 'doubleShoot');
+            powerUps.push(new PowerUp(x, y, type));
+        }
+
+        function animate() {
+            if (!gamePaused) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                player.draw();
+                player.update();
+
+                for (let i = 0; i < player.projectiles.length; i++) {
+                    let projectile = player.projectiles[i];
+                    if (projectile.y < 0 || (projectile instanceof LaserBeam && !laserBeam)) {
+                        player.projectiles.splice(i, 1);
+                        i--;
+                        if (!(projectile instanceof LaserBeam)) {
+                            misses++;
+                            missesElement.textContent = misses;
+                        }
+                    } else {
+                        projectile.draw();
+                        projectile.update();
+
+                        for (let j = 0; j < enemies.length; j++) {
+                            let enemy = enemies[j];
+                            if (!enemy.exploded && 
+                                projectile.x > enemy.x && 
+                                projectile.x < enemy.x + enemy.width && 
+                                projectile.y > enemy.y && 
+                                projectile.y < enemy.y + enemy.height) {
+                                player.projectiles.splice(i, 1);
+                                i--;
+                                enemy.explode();
+                                break;
+                            }
+                        }
+
+                        for (let k = 0; k < powerUps.length; k++) {
+                            let powerUp = powerUps[k];
+                            if ((projectile.x > powerUp.x && 
+                                projectile.x < powerUp.x + powerUp.width && 
+                                projectile.y > powerUp.y && 
+                                projectile.y < powerUp.y + powerUp.height) || 
+                                (projectile instanceof LaserBeam && projectile.x > powerUp.x && projectile.x < powerUp.x + powerUp.width)) {
+                                player.projectiles.splice(i, 1);
+                                i--;
+                                powerUps.splice(k, 1);
+                                showPowerUpParticles(powerUp.x, powerUp.y);
+                                if (powerUp.type === 'doubleShoot') {
+                                    activateDoubleShoot();
+                                } else if (powerUp.type === 'laserBeam') {
+                                    activateLaserBeam();
+                                } else {
+                                    addExtraLife();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                for (let i = 0; i < enemies.length; i++) {
+                    let enemy = enemies[i];
+                    if (enemy.y > canvas.height && !enemy.exploded) {
+                        enemies.splice(i, 1);
+                        i--;
+                        escaped++;
+                        escapedElement.textContent = escaped;
+                        lives--;
+                        livesElement.textContent = lives;
+                        if (lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    } else if (enemy.exploded && enemy.particles.length === 0) {
+                        enemies.splice(i, 1);
+                        i--;
+                    } else {
+                        enemy.update();
+                    }
+                }
+
+                for (let i = 0; i < powerUps.length; i++) {
+                    let powerUp = powerUps[i];
+                    if (powerUp.y > canvas.height) {
+                        powerUps.splice(i, 1);
+                        i--;
+                    } else {
+                        powerUp.update();
+                    }
+                }
+
+                for (let i = 0; i < particles.length; i++) {
+                    let particle = particles[i];
+                    if (particle.life <= 0) {
+                        particles.splice(i, 1);
+                        i--;
+                    } else {
+                        particle.update();
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function showPowerUpParticles(x, y) {
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(x, y, 5, 'white')); // White particles for power-up collection
+            }
+        }
+
+        function activateDoubleShoot() {
+            doubleShoot = true;
+            doubleShootCount++;
+            doubleShootCountElement.textContent = doubleShootCount;
+            if (powerUpTimeout) clearTimeout(powerUpTimeout);
+            powerUpTimeout = setTimeout(() => {
+                doubleShoot = false;
+            }, 5000); // Double shoot lasts for 5 seconds
+        }
+
+        function activateLaserBeam() {
+            laserBeam = true;
+            laserBeamCount++;
+            laserBeamCountElement.textContent = laserBeamCount;
+            if (powerUpTimeout) clearTimeout(powerUpTimeout);
+            powerUpTimeout = setTimeout(() => {
+                laserBeam = false;
+            }, 5000); // Laser beam lasts for 5 seconds
+        }
+
+        function addExtraLife() {
+            lives++;
+            livesElement.textContent = lives;
+            extraLifeCount++;
+            extraLifeCountElement.textContent = extraLifeCount;
+        }
+
+        function nextLevel() {
+            gamePaused = true;
+            level++;
+            levelElement.textContent = level;
+            enemySpeed += 1;
+            popup.style.display = 'block';
+            let countdown = 3;
+            countdownElement.textContent = countdown;
+            const interval = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = countdown;
+                if (countdown === 0) {
+                    clearInterval(interval);
+                    popup.style.display = 'none';
+                    gamePaused = false;
+                    animate();
+                    spawnPowerUp(); // Spawn an extra life power-up at the start of each level
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gamePaused = true;
+            endgame.style.display = 'block';
+            finalHits.textContent = hits;
+            finalMisses.textContent = misses;
+            finalAccuracy.textContent = accuracyElement.textContent;
+            finalEscaped.textContent = escaped;
+            finalLevel.textContent = level;
+            finalPowerUps.textContent = doubleShootCount + laserBeamCount + extraLifeCount;
+        }
+
+        function updateAccuracy() {
+            const totalShots = hits + misses;
+            const accuracy = totalShots > 0 ? ((hits / totalShots) * 100).toFixed(2) : 0;
+            accuracyElement.textContent = `${accuracy}%`;
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            player.setPosition(e.clientX);
+        });
+
+        setInterval(() => {
+            player.shoot();
+        }, 100); // Adjust the interval for the desired rapid fire rate
+
+        setInterval(spawnPowerUp, 10000); // Spawn power-ups every 10 seconds
+
+        spawnEnemies();
+        animate();
+    </script>
+</body>
+</html>
