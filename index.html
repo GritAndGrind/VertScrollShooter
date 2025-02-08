@@ -97,43 +97,46 @@
         let enemiesDefeated = 0;
         let gamePaused = false;
 
-        class Player {
-            constructor() {
-                this.width = 40;
-                this.height = 40;
-                this.x = canvas.width / 2 - this.width / 2;
-                this.y = canvas.height - this.height - 20;
-                this.projectiles = [];
-            }
+		class Player {
+			constructor() {
+				this.width = 40;
+				this.height = 40;
+				this.x = canvas.width / 2 - this.width / 2;
+				this.y = canvas.height - this.height - 20;
+				this.projectiles = [];
+				this.image = new Image();
+				// Replace 'spaceship.png' with the path to your spaceship image
+				this.image.src = 'spaceship.png';
+			}
 
-            draw() {
-                ctx.fillStyle = 'cyan';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
+			draw() {
+				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+			}
 
-            update() {
-                for (let projectile of this.projectiles) {
-                    projectile.update();
-                }
-            }
+			update() {
+				for (let projectile of this.projectiles) {
+					projectile.update();
+				}
+			}
 
-            shoot() {
-                if (laserBeam) {
-                    this.projectiles.push(new LaserBeam(this.x + this.width / 2, this.y));
-                } else if (doubleShoot) {
-                    this.projectiles.push(new Projectile(this.x, this.y));
-                    this.projectiles.push(new Projectile(this.x + this.width, this.y));
-                } else {
-                    this.projectiles.push(new Projectile(this.x + this.width / 2, this.y));
-                }
-            }
+			shoot() {
+				if (laserBeam) {
+					this.projectiles.push(new LaserBeam(this.x + this.width / 2, this.y));
+				} else if (doubleShoot) {
+					this.projectiles.push(new Projectile(this.x, this.y));
+					this.projectiles.push(new Projectile(this.x + this.width, this.y));
+				} else {
+					this.projectiles.push(new Projectile(this.x + this.width / 2, this.y));
+				}
+			}
 
-            setPosition(x) {
-                this.x = x - this.width / 2;
-                if (this.x < 0) this.x = 0;
-                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
-            }
-        }
+			setPosition(x) {
+				this.x = x - this.width / 2;
+				if (this.x < 0) this.x = 0;
+				if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+			}
+		}
+
 
         class Projectile {
             constructor(x, y) {
