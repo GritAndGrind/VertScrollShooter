@@ -251,32 +251,35 @@
 		}
 
 
-        class Particle {
-            constructor(x, y, size = 2, color = 'orange') {
-                this.x = x;
-                this.y = y;
-                this.radius = size;
-                this.speedX = (Math.random() - 0.5) * 4;
-                this.speedY = (Math.random() - 0.5) * 4;
-                this.life = 30;
-                this.color = color;
-            }
+		class Particle {
+			constructor(x, y, size = 2, color = 'orange', life = 90) { // Extend default life to 90
+				this.x = x;
+				this.y = y;
+				this.radius = size;
+				this.speedX = (Math.random() - 0.5) * 4;
+				this.speedY = (Math.random() - 0.5) * 4;
+				this.life = life;
+				this.color = color;
+			}
 
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                ctx.closePath();
-            }
+			draw() {
+				ctx.beginPath();
+				ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+				ctx.fillStyle = this.color;
+				ctx.fill();
+				ctx.closePath();
+			}
 
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life--;
-                this.draw();
-            }
-        }
+			update() {
+				this.x += this.speedX;
+				this.y += this.speedY;
+				this.life--; // Decrease life with each frame
+				if (this.life > 0) {
+					this.draw();
+				}
+			}
+		}
+
 
 		class PowerUp {
 			constructor(x, y, type) {
@@ -284,7 +287,7 @@
 				this.height = 20;
 				this.x = x;
 				this.y = y;
-				this.speed = 3;
+				this.speed = 5;
 				this.type = type;
 				this.image = new Image();
 				if (type === 'doubleShoot') {
@@ -301,8 +304,8 @@
 
 			draw() {
 				// Update glowBlur for pulsing effect
-				this.glowBlur += this.glowDirection * 5; // Increase the step for faster pulsing
-				if (this.glowBlur >= 50 || this.glowBlur <= 20) { // Increase the maximum blur value
+				this.glowBlur += this.glowDirection * 9; // Increase the step for faster pulsing
+				if (this.glowBlur >= 99 || this.glowBlur <= 9) { // Increase the maximum blur value
 					this.glowDirection *= -1;
 				}
 
@@ -313,7 +316,7 @@
 				ctx.beginPath();
 				ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width, 0, Math.PI * 2);
 				ctx.strokeStyle = 'rgba(255, 0, 255, 1)'; // More intense magenta color
-				ctx.lineWidth = 5;
+				ctx.lineWidth = 8;
 				ctx.stroke();
 				ctx.restore();
 
@@ -457,11 +460,14 @@
             }
         }
 
-        function showPowerUpParticles(x, y) {
-            for (let i = 0; i < 10; i++) {
-                particles.push(new Particle(x, y, 5, 'white')); // White particles for power-up collection
-            }
-        }
+	function showPowerUpParticles(x, y, color = 'white', life = 120) { // Extend particle life to 120
+		for (let i = 0; i < 20; i++) {
+			particles.push(new Particle(x, y, 5, color, life));
+		}
+	}
+	
+
+
         function activateDoubleShoot() {
             doubleShoot = true;
             doubleShootCount++;
