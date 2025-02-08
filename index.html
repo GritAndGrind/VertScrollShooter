@@ -287,7 +287,6 @@
 				this.speed = 3;
 				this.type = type;
 				this.image = new Image();
-				// Replace the image sources with the correct paths
 				if (type === 'doubleShoot') {
 					this.image.src = 'doubleShoot.png';
 				} else if (type === 'laserBeam') {
@@ -295,9 +294,30 @@
 				} else if (type === 'extraLife') {
 					this.image.src = 'extraLife.png';
 				}
+				// Variables for pulsing glow effect
+				this.glowBlur = 20;
+				this.glowDirection = 1;
 			}
 
 			draw() {
+				// Update glowBlur for pulsing effect
+				this.glowBlur += this.glowDirection * 5; // Increase the step for faster pulsing
+				if (this.glowBlur >= 50 || this.glowBlur <= 20) { // Increase the maximum blur value
+					this.glowDirection *= -1;
+				}
+
+				// Draw glowing ring with pulsing effect in magenta
+				ctx.save();
+				ctx.shadowBlur = this.glowBlur;
+				ctx.shadowColor = 'rgba(255, 0, 255, 1)'; // More intense magenta color
+				ctx.beginPath();
+				ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width, 0, Math.PI * 2);
+				ctx.strokeStyle = 'rgba(255, 0, 255, 1)'; // More intense magenta color
+				ctx.lineWidth = 5;
+				ctx.stroke();
+				ctx.restore();
+
+				// Draw power-up image
 				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
 			}
 
@@ -306,6 +326,10 @@
 				this.draw();
 			}
 		}
+
+
+
+
 
         const player = new Player();
         const enemies = [];
