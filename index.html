@@ -202,47 +202,51 @@
             }
         }
 
-        class Enemy {
-            constructor(x, y) {
-                this.width = 40;
-                this.height = 40;
-                this.x = x;
-                this.y = y;
-                this.speed = enemySpeed;
-                this.particles = [];
-                this.exploded = false;
-            }
+		class Enemy {
+			constructor(x, y, imgSrc) {
+				this.width = 40;
+				this.height = 40;
+				this.x = x;
+				this.y = y;
+				this.speed = enemySpeed;
+				this.particles = [];
+				this.exploded = false;
+				this.image = new Image();
+				this.image.src = imgSrc;
+			}
 
-            draw() {
-                ctx.fillStyle = 'red';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
+			draw() {
+				if (!this.exploded) {
+					ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+				} else {
+					for (let particle of this.particles) {
+						particle.update();
+					}
+				}
+			}
 
-            update() {
-                if (!this.exploded) {
-                    this.y += this.speed;
-                    this.draw();
-                } else {
-                    for (let particle of this.particles) {
-                        particle.update();
-                    }
-                }
-            }
+			update() {
+				if (!this.exploded) {
+					this.y += this.speed;
+				}
+				this.draw();
+			}
 
-            explode() {
-                this.exploded = true;
-                for (let i = 0; i < 10; i++) {
-                    this.particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2));
-                }
-                hits++;
-                hitsElement.textContent = hits;
-                updateAccuracy();
-                enemiesDefeated++;
-                if (enemiesDefeated % 50 === 0) {
-                    nextLevel();
-                }
-            }
-        }
+			explode() {
+				this.exploded = true;
+				for (let i = 0; i < 10; i++) {
+					this.particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2));
+				}
+				hits++;
+				hitsElement.textContent = hits;
+				updateAccuracy();
+				enemiesDefeated++;
+				if (enemiesDefeated % 50 === 0) {
+					nextLevel();
+				}
+			}
+		}
+
 
         class Particle {
             constructor(x, y, size = 2, color = 'orange') {
@@ -296,15 +300,17 @@
         const powerUps = [];
         const particles = [];
 
-        function spawnEnemies() {
-            setInterval(() => {
-                if (!gamePaused) {
-                    const x = Math.random() * (canvas.width - 40);
-                    const y = -40;
-                    enemies.push(new Enemy(x, y));
-                }
-            }, 1000);
-        }
+		function spawnEnemies() {
+			setInterval(() => {
+				if (!gamePaused) {
+					const x = Math.random() * (canvas.width - 40);
+					const y = -40;
+					// Replace 'enemy.png' with the path to your enemy image
+					enemies.push(new Enemy(x, y, 'enemy.png'));
+				}
+			}, 1000);
+		}
+
 
         function spawnPowerUp() {
             const x = Math.random() * (canvas.width - 20);
