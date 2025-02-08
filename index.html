@@ -128,7 +128,7 @@
                 this.width = 40;
                 this.height = 40;
                 this.x = canvas.width / 2 - this.width / 2;
-                this.y = canvas.height - this.height - 20;
+                this.y = canvas.height - this.height - 50; // Move the ship up
                 this.projectiles = [];
                 this.image = new Image();
                 this.image.src = 'spaceship.png'; // Replace with the path to your spaceship image
@@ -357,6 +357,7 @@
         const enemies = [];
         const powerUps = [];
         const particles = [];
+
         function spawnEnemies() {
             setInterval(() => {
                 if (!gamePaused) {
@@ -374,114 +375,113 @@
             powerUps.push(new PowerUp(x, y, type));
         }
 
-function animate() {
-    if (!gamePaused) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        player.draw();
-        player.update();
+        function animate() {
+            if (!gamePaused) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                player.draw();
+                player.update();
 
-        for (let i = 0; i < player.projectiles.length; i++) {
-            let projectile = player.projectiles[i];
-            if (!projectile) continue; // Skip if projectile is undefined
-            if (projectile.y < 0 || (projectile instanceof LaserBeam && !laserBeam)) {
-                player.projectiles.splice(i, 1);
-                i--;
-                if (!(projectile instanceof LaserBeam)) {
-                    misses++;
-                    missesElement.textContent = misses;
-                }
-            } else {
-                projectile.draw();
-                projectile.update();
-
-                for (let j = 0; j < enemies.length; j++) {
-                    let enemy = enemies[j];
-                    if (!enemy) continue; // Skip if enemy is undefined
-                    if (!enemy.exploded && 
-                        projectile.x > enemy.x && 
-                        projectile.x < enemy.x + enemy.width && 
-                        projectile.y > enemy.y && 
-                        projectile.y < enemy.y + enemy.height) {
+                for (let i = 0; i < player.projectiles.length; i++) {
+                    let projectile = player.projectiles[i];
+                    if (!projectile) continue; // Skip if projectile is undefined
+                    if (projectile.y < 0 || (projectile instanceof LaserBeam && !laserBeam)) {
                         player.projectiles.splice(i, 1);
                         i--;
-                        enemy.explode();
-                        break;
-                    }
-                }
-
-                for (let k = 0; k < powerUps.length; k++) {
-                    let powerUp = powerUps[k];
-                    if (!powerUp) continue; // Skip if powerUp is undefined
-                    if ((projectile.x > powerUp.x && 
-                        projectile.x < powerUp.x + powerUp.width && 
-                        projectile.y > powerUp.y && 
-                        projectile.y < powerUp.y + powerUp.height) || 
-                        (projectile instanceof LaserBeam && projectile.x > powerUp.x && projectile.x < powerUp.x + powerUp.width)) {
-                        player.projectiles.splice(i, 1);
-                        i--;
-                        powerUps.splice(k, 1);
-                        showPowerUpParticles(powerUp.x, powerUp.y);
-                        if (powerUp.type === 'doubleShoot') {
-                            activateDoubleShoot();
-                        } else if (powerUp.type === 'laserBeam') {
-                            activateLaserBeam();
-                        } else {
-                            addExtraLife();
+                        if (!(projectile instanceof LaserBeam)) {
+                            misses++;
+                            missesElement.textContent = misses;
                         }
-                        break;
+                    } else {
+                        projectile.draw();
+                        projectile.update();
+
+                        for (let j = 0; j < enemies.length; j++) {
+                            let enemy = enemies[j];
+                            if (!enemy) continue; // Skip if enemy is undefined
+                            if (!enemy.exploded && 
+                                projectile.x > enemy.x && 
+                                projectile.x < enemy.x + enemy.width && 
+                                projectile.y > enemy.y && 
+                                projectile.y < enemy.y + enemy.height) {
+                                player.projectiles.splice(i, 1);
+                                i--;
+                                enemy.explode();
+                                break;
+                            }
+                        }
+
+                        for (let k = 0; i < powerUps.length; k++) {
+                            let powerUp = powerUps[k];
+                            if (!powerUp) continue; // Skip if powerUp is undefined
+                            if ((projectile.x > powerUp.x && 
+                                projectile.x < powerUp.x + powerUp.width && 
+                                projectile.y > powerUp.y && 
+                                projectile.y < powerUp.y + powerUp.height) || 
+                                (projectile instanceof LaserBeam && projectile.x > powerUp.x && projectile.x < powerUp.x + powerUp.width)) {
+                                player.projectiles.splice(i, 1);
+                                i--;
+                                powerUps.splice(k, 1);
+                                showPowerUpParticles(powerUp.x, powerUp.y);
+                                if (powerUp.type === 'doubleShoot') {
+                                    activateDoubleShoot();
+                                } else if (powerUp.type === 'laserBeam') {
+                                    activateLaserBeam();
+                                } else {
+                                    addExtraLife();
+                                }
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        for (let i = 0; i < enemies.length; i++) {
-            let enemy = enemies[i];
-            if (!enemy) continue; // Skip if enemy is undefined
-            if (enemy.y > canvas.height && !enemy.exploded) {
-                enemies.splice(i, 1);
-                i--;
-                escaped++;
-                escapedElement.textContent = escaped;
-                lives--;
-                livesElement.textContent = lives;
-                if (lives <= 0) {
-                    endGame();
-                    return;
+                for (let i = 0; i < enemies.length; i++) {
+                    let enemy = enemies[i];
+                    if (!enemy) continue; // Skip if enemy is undefined
+                    if (enemy.y > canvas.height && !enemy.exploded) {
+                        enemies.splice(i, 1);
+                        i--;
+                        escaped++;
+                        escapedElement.textContent = escaped;
+                        lives--;
+                        livesElement.textContent = lives;
+                        if (lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    } else if (enemy.exploded && enemy.particles.length === 0) {
+                        enemies.splice(i, 1);
+                        i--;
+                    } else {
+                        enemy.update();
+                    }
                 }
-            } else if (enemy.exploded && enemy.particles.length === 0) {
-                enemies.splice(i, 1);
-                i--;
-            } else {
-                enemy.update();
+
+                for (let i = 0; i < powerUps.length; i++) {
+                    let powerUp = powerUps[i];
+                    if (!powerUp) continue; // Skip if powerUp is undefined
+                    if (powerUp.y > canvas.height) {
+                        powerUps.splice(i, 1);
+                        i--;
+                    } else {
+                        powerUp.update();
+                    }
+                }
+
+                for (let i = 0; i < particles.length; i++) {
+                    let particle = particles[i];
+                    if (!particle) continue; // Skip if particle is undefined
+                    if (particle.life <= 0) {
+                        particles.splice(i, 1);
+                        i--;
+                    } else {
+                        particle.update();
+                    }
+                }
+
+                requestAnimationFrame(animate);
             }
         }
-
-        for (let i = 0; i < powerUps.length; i++) {
-            let powerUp = powerUps[i];
-            if (!powerUp) continue; // Skip if powerUp is undefined
-            if (powerUp.y > canvas.height) {
-                powerUps.splice(i, 1);
-                i--;
-            } else {
-                powerUp.update();
-            }
-        }
-
-        for (let i = 0; i < particles.length; i++) {
-            let particle = particles[i];
-            if (!particle) continue; // Skip if particle is undefined
-            if (particle.life <= 0) {
-                particles.splice(i, 1);
-                i--;
-            } else {
-                particle.update();
-            }
-        }
-
-        requestAnimationFrame(animate);
-    }
-}
-
 
         function showPowerUpParticles(x, y, color = 'white', life = 120) { // Extend particle life to 120
             for (let i = 0; i < 20; i++) {
@@ -639,6 +639,14 @@ function animate() {
             }
         });
 
+        window.addEventListener('touchstart', function(e) {
+            startShooting();
+        });
+
+        window.addEventListener('touchend', function(e) {
+            stopShooting();
+        });
+
         setInterval(rechargeShootMeter, 100); // Recharge meter over time
 
         setInterval(spawnPowerUp, 10000); // Spawn power-ups every 10 seconds
@@ -648,3 +656,6 @@ function animate() {
     </script>
 </body>
 </html>
+
+
+               
