@@ -278,26 +278,35 @@
             }
         }
 
-        class PowerUp {
-            constructor(x, y, type) {
-                this.width = 20;
-                this.height = 20;
-                this.x = x;
-                this.y = y;
-                this.speed = 3;
-                this.type = type;
-            }
+		class PowerUp {
+			constructor(x, y, type) {
+				this.width = 20;
+				this.height = 20;
+				this.x = x;
+				this.y = y;
+				this.speed = 3;
+				this.type = type;
+				this.image = new Image();
+				// Replace the image sources with the correct paths
+				if (type === 'doubleShoot') {
+					this.image.src = 'doubleShoot.png';
+				} else if (type === 'laserBeam') {
+					this.image.src = 'laserBeam.png';
+				} else if (type === 'extraLife') {
+					this.image.src = 'extraLife.png';
+				}
+			}
 
-            draw() {
-                ctx.fillStyle = this.type === 'doubleShoot' ? 'blue' : this.type === 'laserBeam' ? 'green' : 'magenta';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
+			draw() {
+				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+			}
 
-            update() {
-                this.y += this.speed;
-                this.draw();
-            }
-        }
+			update() {
+				this.y += this.speed;
+				this.draw();
+			}
+		}
+
         const player = new Player();
         const enemies = [];
         const powerUps = [];
