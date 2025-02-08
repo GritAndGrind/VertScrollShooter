@@ -32,6 +32,23 @@
         #endgame p:first-child {
             color: red;
         }
+        #shootMeterContainer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+        }
+        #shootMeter {
+            height: 100%;
+            background: #4CAF50;
+            width: 100%;
+            border-radius: 10px;
+            transition: width 0.1s;
+        }
     </style>
 </head>
 <body>
@@ -56,6 +73,9 @@
         <p>Level Reached: <span id="finalLevel">1</span></p>
         <p>Total Power-Ups Collected: <span id="finalPowerUps">0</span></p>
     </div>
+    <div id="shootMeterContainer">
+        <div id="shootMeter"></div>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -77,6 +97,7 @@
         const finalLevel = document.getElementById('finalLevel');
         const finalPowerUps = document.getElementById('finalPowerUps');
         const countdownElement = document.getElementById('countdown');
+        const shootMeterElement = document.getElementById('shootMeter');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -96,47 +117,50 @@
         let enemySpeed = 3;
         let enemiesDefeated = 0;
         let gamePaused = false;
+        let isShooting = false;
+        let shootMeter = 100;
+        let shootMeterDepletionRate = 1;
+        let shootMeterRechargeRate = 0.5;
+        let shootMeterInterval;
 
-		class Player {
-			constructor() {
-				this.width = 40;
-				this.height = 40;
-				this.x = canvas.width / 2 - this.width / 2;
-				this.y = canvas.height - this.height - 20;
-				this.projectiles = [];
-				this.image = new Image();
-				// Replace 'spaceship.png' with the path to your spaceship image
-				this.image.src = 'spaceship.png';
-			}
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 40;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - this.height - 20;
+                this.projectiles = [];
+                this.image = new Image();
+                this.image.src = 'spaceship.png'; // Replace with the path to your spaceship image
+            }
 
-			draw() {
-				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
-			}
+            draw() {
+                ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+            }
 
-			update() {
-				for (let projectile of this.projectiles) {
-					projectile.update();
-				}
-			}
+            update() {
+                for (let projectile of this.projectiles) {
+                    projectile.update();
+                }
+            }
 
-			shoot() {
-				if (laserBeam) {
-					this.projectiles.push(new LaserBeam(this.x + this.width / 2, this.y));
-				} else if (doubleShoot) {
-					this.projectiles.push(new Projectile(this.x, this.y));
-					this.projectiles.push(new Projectile(this.x + this.width, this.y));
-				} else {
-					this.projectiles.push(new Projectile(this.x + this.width / 2, this.y));
-				}
-			}
+            shoot() {
+                if (laserBeam) {
+                    this.projectiles.push(new LaserBeam(this.x + this.width / 2, this.y));
+                } else if (doubleShoot) {
+                    this.projectiles.push(new Projectile(this.x, this.y));
+                    this.projectiles.push(new Projectile(this.x + this.width, this.y));
+                } else {
+                    this.projectiles.push(new Projectile(this.x + this.width / 2, this.y));
+                }
+            }
 
-			setPosition(x) {
-				this.x = x - this.width / 2;
-				if (this.x < 0) this.x = 0;
-				if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
-			}
-		}
-
+            setPosition(x) {
+                this.x = x - this.width / 2;
+                if (this.x < 0) this.x = 0;
+                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+            }
+        }
 
         class Projectile {
             constructor(x, y) {
@@ -159,6 +183,7 @@
                 this.draw();
             }
         }
+
         class LaserBeam {
             constructor(x, y) {
                 this.x = x;
@@ -205,151 +230,142 @@
             }
         }
 
-		class Enemy {
-			constructor(x, y, imgSrc) {
-				this.width = 40;
-				this.height = 40;
-				this.x = x;
-				this.y = y;
-				this.speed = enemySpeed;
-				this.particles = [];
-				this.exploded = false;
-				this.image = new Image();
-				this.image.src = imgSrc;
-			}
+        class Enemy {
+            constructor(x, y, imgSrc) {
+                this.width = 40;
+                this.height = 40;
+                this.x = x;
+                this.y = y;
+                this.speed = enemySpeed;
+                this.particles = [];
+                this.exploded = false;
+                this.image = new Image();
+                this.image.src = imgSrc;
+            }
 
-			draw() {
-				if (!this.exploded) {
-					ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
-				} else {
-					for (let particle of this.particles) {
-						particle.update();
-					}
-				}
-			}
+            draw() {
+                if (!this.exploded) {
+                    ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+                } else {
+                    for (let particle of this.particles) {
+                        particle.update();
+                    }
+                }
+            }
 
-			update() {
-				if (!this.exploded) {
-					this.y += this.speed;
-				}
-				this.draw();
-			}
+            update() {
+                if (!this.exploded) {
+                    this.y += this.speed;
+                }
+                this.draw();
+            }
 
-			explode() {
-				this.exploded = true;
-				for (let i = 0; i < 10; i++) {
-					this.particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2));
-				}
-				hits++;
-				hitsElement.textContent = hits;
-				updateAccuracy();
-				enemiesDefeated++;
-				if (enemiesDefeated % 50 === 0) {
-					nextLevel();
-				}
-			}
-		}
+            explode() {
+                this.exploded = true;
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2));
+                }
+                hits++;
+                hitsElement.textContent = hits;
+                updateAccuracy();
+                enemiesDefeated++;
+                if (enemiesDefeated % 50 === 0) {
+                    nextLevel();
+                }
+            }
+        }
 
+        class Particle {
+            constructor(x, y, size = 2, color = 'orange', life = 90) { // Extend default life to 90
+                this.x = x;
+                this.y = y;
+                this.radius = size;
+                this.speedX = (Math.random() - 0.5) * 4;
+                this.speedY = (Math.random() - 0.5) * 4;
+                this.life = life;
+                this.color = color;
+            }
 
-		class Particle {
-			constructor(x, y, size = 2, color = 'orange', life = 90) { // Extend default life to 90
-				this.x = x;
-				this.y = y;
-				this.radius = size;
-				this.speedX = (Math.random() - 0.5) * 4;
-				this.speedY = (Math.random() - 0.5) * 4;
-				this.life = life;
-				this.color = color;
-			}
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
 
-			draw() {
-				ctx.beginPath();
-				ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-				ctx.fillStyle = this.color;
-				ctx.fill();
-				ctx.closePath();
-			}
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life--; // Decrease life with each frame
+                if (this.life > 0) {
+                    this.draw();
+                }
+            }
+        }
 
-			update() {
-				this.x += this.speedX;
-				this.y += this.speedY;
-				this.life--; // Decrease life with each frame
-				if (this.life > 0) {
-					this.draw();
-				}
-			}
-		}
+        class PowerUp {
+            constructor(x, y, type) {
+                this.width = 20;
+                this.height = 20;
+                this.x = x;
+                this.y = y;
+                this.speed = 5;
+                this.type = type;
+                this.image = new Image();
+                if (type === 'doubleShoot') {
+                    this.image.src = 'doubleShoot.png';
+                } else if (type === 'laserBeam') {
+                    this.image.src = 'laserBeam.png';
+                } else if (type === 'extraLife') {
+                    this.image.src = 'extraLife.png';
+                }
+                // Variables for pulsing glow effect
+                this.glowBlur = 20;
+                this.glowDirection = 1;
+            }
 
+            draw() {
+                // Update glowBlur for pulsing effect
+                this.glowBlur += this.glowDirection * 9; // Increase the step for faster pulsing
+                if (this.glowBlur >= 99 || this.glowBlur <= 9) { // Increase the maximum blur value
+                    this.glowDirection *= -1;
+                }
 
-		class PowerUp {
-			constructor(x, y, type) {
-				this.width = 20;
-				this.height = 20;
-				this.x = x;
-				this.y = y;
-				this.speed = 5;
-				this.type = type;
-				this.image = new Image();
-				if (type === 'doubleShoot') {
-					this.image.src = 'doubleShoot.png';
-				} else if (type === 'laserBeam') {
-					this.image.src = 'laserBeam.png';
-				} else if (type === 'extraLife') {
-					this.image.src = 'extraLife.png';
-				}
-				// Variables for pulsing glow effect
-				this.glowBlur = 20;
-				this.glowDirection = 1;
-			}
+                // Draw glowing ring with pulsing effect in magenta
+                ctx.save();
+                ctx.shadowBlur = this.glowBlur;
+                ctx.shadowColor = 'rgba(255, 0, 255, 1)'; // More intense magenta color
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 0, 255, 1)'; // More intense magenta color
+                ctx.lineWidth = 8;
+                ctx.stroke();
+                ctx.restore();
 
-			draw() {
-				// Update glowBlur for pulsing effect
-				this.glowBlur += this.glowDirection * 9; // Increase the step for faster pulsing
-				if (this.glowBlur >= 99 || this.glowBlur <= 9) { // Increase the maximum blur value
-					this.glowDirection *= -1;
-				}
+                // Draw power-up image
+                ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+            }
 
-				// Draw glowing ring with pulsing effect in magenta
-				ctx.save();
-				ctx.shadowBlur = this.glowBlur;
-				ctx.shadowColor = 'rgba(255, 0, 255, 1)'; // More intense magenta color
-				ctx.beginPath();
-				ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width, 0, Math.PI * 2);
-				ctx.strokeStyle = 'rgba(255, 0, 255, 1)'; // More intense magenta color
-				ctx.lineWidth = 8;
-				ctx.stroke();
-				ctx.restore();
-
-				// Draw power-up image
-				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
-			}
-
-			update() {
-				this.y += this.speed;
-				this.draw();
-			}
-		}
-
-
-
-
+            update() {
+                this.y += this.speed;
+                this.draw();
+            }
+        }
 
         const player = new Player();
         const enemies = [];
         const powerUps = [];
         const particles = [];
-
-		function spawnEnemies() {
-			setInterval(() => {
-				if (!gamePaused) {
-					const x = Math.random() * (canvas.width - 40);
-					const y = -40;
-					// Replace 'enemy.png' with the path to your enemy image
-					enemies.push(new Enemy(x, y, 'enemy.png'));
-				}
-			}, 1000);
-		}
-
+        function spawnEnemies() {
+            setInterval(() => {
+                if (!gamePaused) {
+                    const x = Math.random() * (canvas.width - 40);
+                    const y = -40;
+                    enemies.push(new Enemy(x, y, 'enemy.png')); // Replace with the path to your enemy image
+                }
+            }, 1000);
+        }
 
         function spawnPowerUp() {
             const x = Math.random() * (canvas.width - 20);
@@ -358,115 +374,120 @@
             powerUps.push(new PowerUp(x, y, type));
         }
 
-        function animate() {
-            if (!gamePaused) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                player.draw();
-                player.update();
+function animate() {
+    if (!gamePaused) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        player.draw();
+        player.update();
 
-                for (let i = 0; i < player.projectiles.length; i++) {
-                    let projectile = player.projectiles[i];
-                    if (projectile.y < 0 || (projectile instanceof LaserBeam && !laserBeam)) {
+        for (let i = 0; i < player.projectiles.length; i++) {
+            let projectile = player.projectiles[i];
+            if (!projectile) continue; // Skip if projectile is undefined
+            if (projectile.y < 0 || (projectile instanceof LaserBeam && !laserBeam)) {
+                player.projectiles.splice(i, 1);
+                i--;
+                if (!(projectile instanceof LaserBeam)) {
+                    misses++;
+                    missesElement.textContent = misses;
+                }
+            } else {
+                projectile.draw();
+                projectile.update();
+
+                for (let j = 0; j < enemies.length; j++) {
+                    let enemy = enemies[j];
+                    if (!enemy) continue; // Skip if enemy is undefined
+                    if (!enemy.exploded && 
+                        projectile.x > enemy.x && 
+                        projectile.x < enemy.x + enemy.width && 
+                        projectile.y > enemy.y && 
+                        projectile.y < enemy.y + enemy.height) {
                         player.projectiles.splice(i, 1);
                         i--;
-                        if (!(projectile instanceof LaserBeam)) {
-                            misses++;
-                            missesElement.textContent = misses;
-                        }
-                    } else {
-                        projectile.draw();
-                        projectile.update();
-
-                        for (let j = 0; j < enemies.length; j++) {
-                            let enemy = enemies[j];
-                            if (!enemy.exploded && 
-                                projectile.x > enemy.x && 
-                                projectile.x < enemy.x + enemy.width && 
-                                projectile.y > enemy.y && 
-                                projectile.y < enemy.y + enemy.height) {
-                                player.projectiles.splice(i, 1);
-                                i--;
-                                enemy.explode();
-                                break;
-                            }
-                        }
-
-                        for (let k = 0; k < powerUps.length; k++) {
-                            let powerUp = powerUps[k];
-                            if ((projectile.x > powerUp.x && 
-                                projectile.x < powerUp.x + powerUp.width && 
-                                projectile.y > powerUp.y && 
-                                projectile.y < powerUp.y + powerUp.height) || 
-                                (projectile instanceof LaserBeam && projectile.x > powerUp.x && projectile.x < powerUp.x + powerUp.width)) {
-                                player.projectiles.splice(i, 1);
-                                i--;
-                                powerUps.splice(k, 1);
-                                showPowerUpParticles(powerUp.x, powerUp.y);
-                                if (powerUp.type === 'doubleShoot') {
-                                    activateDoubleShoot();
-                                } else if (powerUp.type === 'laserBeam') {
-                                    activateLaserBeam();
-                                } else {
-                                    addExtraLife();
-                                }
-                                break;
-                            }
-                        }
+                        enemy.explode();
+                        break;
                     }
                 }
 
-                for (let i = 0; i < enemies.length; i++) {
-                    let enemy = enemies[i];
-                    if (enemy.y > canvas.height && !enemy.exploded) {
-                        enemies.splice(i, 1);
+                for (let k = 0; k < powerUps.length; k++) {
+                    let powerUp = powerUps[k];
+                    if (!powerUp) continue; // Skip if powerUp is undefined
+                    if ((projectile.x > powerUp.x && 
+                        projectile.x < powerUp.x + powerUp.width && 
+                        projectile.y > powerUp.y && 
+                        projectile.y < powerUp.y + powerUp.height) || 
+                        (projectile instanceof LaserBeam && projectile.x > powerUp.x && projectile.x < powerUp.x + powerUp.width)) {
+                        player.projectiles.splice(i, 1);
                         i--;
-                        escaped++;
-                        escapedElement.textContent = escaped;
-                        lives--;
-                        livesElement.textContent = lives;
-                        if (lives <= 0) {
-                            endGame();
-                            return;
+                        powerUps.splice(k, 1);
+                        showPowerUpParticles(powerUp.x, powerUp.y);
+                        if (powerUp.type === 'doubleShoot') {
+                            activateDoubleShoot();
+                        } else if (powerUp.type === 'laserBeam') {
+                            activateLaserBeam();
+                        } else {
+                            addExtraLife();
                         }
-                    } else if (enemy.exploded && enemy.particles.length === 0) {
-                        enemies.splice(i, 1);
-                        i--;
-                    } else {
-                        enemy.update();
+                        break;
                     }
                 }
-
-                for (let i = 0; i < powerUps.length; i++) {
-                    let powerUp = powerUps[i];
-                    if (powerUp.y > canvas.height) {
-                        powerUps.splice(i, 1);
-                        i--;
-                    } else {
-                        powerUp.update();
-                    }
-                }
-
-                for (let i = 0; i < particles.length; i++) {
-                    let particle = particles[i];
-                    if (particle.life <= 0) {
-                        particles.splice(i, 1);
-                        i--;
-                    } else {
-                        particle.update();
-                    }
-                }
-
-                requestAnimationFrame(animate);
             }
         }
 
-	function showPowerUpParticles(x, y, color = 'white', life = 120) { // Extend particle life to 120
-		for (let i = 0; i < 20; i++) {
-			particles.push(new Particle(x, y, 5, color, life));
-		}
-	}
-	
+        for (let i = 0; i < enemies.length; i++) {
+            let enemy = enemies[i];
+            if (!enemy) continue; // Skip if enemy is undefined
+            if (enemy.y > canvas.height && !enemy.exploded) {
+                enemies.splice(i, 1);
+                i--;
+                escaped++;
+                escapedElement.textContent = escaped;
+                lives--;
+                livesElement.textContent = lives;
+                if (lives <= 0) {
+                    endGame();
+                    return;
+                }
+            } else if (enemy.exploded && enemy.particles.length === 0) {
+                enemies.splice(i, 1);
+                i--;
+            } else {
+                enemy.update();
+            }
+        }
 
+        for (let i = 0; i < powerUps.length; i++) {
+            let powerUp = powerUps[i];
+            if (!powerUp) continue; // Skip if powerUp is undefined
+            if (powerUp.y > canvas.height) {
+                powerUps.splice(i, 1);
+                i--;
+            } else {
+                powerUp.update();
+            }
+        }
+
+        for (let i = 0; i < particles.length; i++) {
+            let particle = particles[i];
+            if (!particle) continue; // Skip if particle is undefined
+            if (particle.life <= 0) {
+                particles.splice(i, 1);
+                i--;
+            } else {
+                particle.update();
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+}
+
+
+        function showPowerUpParticles(x, y, color = 'white', life = 120) { // Extend particle life to 120
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(x, y, 5, color, life));
+            }
+        }
 
         function activateDoubleShoot() {
             doubleShoot = true;
@@ -547,9 +568,78 @@
             e.preventDefault();
         }, { passive: false });
 
-        setInterval(() => {
-            player.shoot();
-        }, 100); // Adjust the interval for the desired rapid fire rate
+        function updateShootMeter() {
+            shootMeterElement.style.width = `${shootMeter}%`;
+        }
+
+        function depleteShootMeter() {
+            if (shootMeter > 0) {
+                shootMeter -= shootMeterDepletionRate;
+                updateShootMeter();
+            } else {
+                clearInterval(shootMeterInterval);
+                isShooting = false;
+                shootMeterInterval = null;
+                shootMeter = 0;
+            }
+        }
+
+        function rechargeShootMeter() {
+            if (shootMeter < 100) {
+                shootMeter += shootMeterRechargeRate;
+                updateShootMeter();
+            }
+        }
+
+        function shoot() {
+            if (shootMeter > 0) {
+                player.shoot();
+                depleteShootMeter();
+            }
+        }
+
+        function startShooting() {
+            if (!isShooting && shootMeter > 0) {
+                isShooting = true;
+                shootMeterInterval = setInterval(() => {
+                    shoot();
+                }, 100); // Adjust the interval for the desired rapid fire rate
+            }
+        }
+
+        function stopShooting() {
+            if (isShooting) {
+                clearInterval(shootMeterInterval);
+                isShooting = false;
+                shootMeterInterval = null;
+            }
+        }
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === ' ') {
+                startShooting();
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            if (e.key === ' ') {
+                stopShooting();
+            }
+        });
+
+        window.addEventListener('mousedown', function(e) {
+            if (e.button === 0) { // Left mouse button
+                startShooting();
+            }
+        });
+
+        window.addEventListener('mouseup', function(e) {
+            if (e.button === 0) { // Left mouse button
+                stopShooting();
+            }
+        });
+
+        setInterval(rechargeShootMeter, 100); // Recharge meter over time
 
         setInterval(spawnPowerUp, 10000); // Spawn power-ups every 10 seconds
 
